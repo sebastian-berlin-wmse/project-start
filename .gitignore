@@ -1,0 +1,15 @@
+*~
+
+.gitignore
+lib64
+pip-selfcheck.json
+pywikibot.lwp
+throttle.ctrl
+user-password.py
+pyvenv.cfg
+
+__pycache__/
+bin/
+lib/
+share/
+apicache-py3/
