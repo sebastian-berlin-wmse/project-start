@@ -28,7 +28,14 @@ class Wiki:
     def __init__(self):
         self._site = Site()
 
-    def add_project_page(self, name, description, partners):
+    def add_project_page(
+            self,
+            name,
+            description,
+            partners,
+            phab_id,
+            phab_name
+    ):
         """Add the main project page.
 
         Parameters
@@ -44,6 +51,8 @@ class Wiki:
         template = Template("Projekt-sida", True)
         template.add_parameter("beskrivning", description)
         template.add_parameter("samarbetspartners", partners)
+        template.add_parameter("phabricatorId", phab_id)
+        template.add_parameter("phabricatorName", phab_name)
         page = Page(self._site, name, PROJECT_NAMESPACE)
         content = "{}".format(template)
         page.text = content
