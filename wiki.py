@@ -1,3 +1,6 @@
+from collections import OrderedDict
+import logging
+
 from pywikibot import Site
 from pywikibot import Page
 
@@ -89,7 +92,7 @@ class Wiki:
             title,
             summary,
             template_name,
-            template_parameters={}
+            template_parameters=None
     ):
         """Add a  subpage under the project page.
 
@@ -112,9 +115,12 @@ class Wiki:
         full_title = "{}/{}".format(project, title)
         page = Page(self._site, full_title, PROJECT_NAMESPACE)
         template = Template(template_name, True)
-        for key, value in template_parameters.items():
-            template.add_parameter(key, value)
-        page.text = "{}".format(template)
+        if template_parameters:
+            for key, value in template_parameters.items():
+                template.add_parameter(key, value)
+        page.text = "{}".format(template.multiline_string())
+        logging.debug("Writing to subpage '{}'.".format(page))
+        logging.debug(page.text)
         page.save(summary)
 
     def add_global_metrics_subpage(self, project):
@@ -156,7 +162,9 @@ class Wiki:
             start,
             end,
             financier,
-            budget
+            budget,
+            goals,
+            goal_fulfillments
     ):
         """Add a project data subpage under the project page.
 
@@ -177,17 +185,24 @@ class Wiki:
             Passed to template as parameter "finansiär".
         budget : str
             Passed to template as parameter "budget".
+        goals : OrderedDict
+            A map of goal names and planned values for this project.
+        goals : dict
+            A map of goal names and fulfillment texts.
 
         """
         title = "Projektdata"
         summary = "[TEST] Skapa undersida för projektdata."
-        parameters = {
-            "ansvarig": owner,
-            "projektstart": start,
-            "projektslut": end,
-            "finansiär": financier,
-            "budget": budget
-        }
+        parameters = OrderedDict()
+        parameters["ansvarig"] = owner
+        parameters["projektstart"] = start
+        parameters["projektslut"] = end
+        parameters["finansiär"] = financier
+        parameters["budget"] = budget
+        parameters["interna_mål"] = \
+            Template("Måltexter 2018", parameters=goals)
+        parameters["måluppfyllnad"] = \
+            self._create_goal_fulfillment_text(goals.keys(), goal_fulfillments)
         self._add_subpage(
             project,
             title,
@@ -195,3 +210,23 @@ class Wiki:
             "Projektdata-sida",
             parameters
         )
+
+    def _create_goal_fulfillment_text(self, goals, fulfillments):
+        """Create a string with the fulfillment texts for a set of goals.
+
+        Parameters
+        ----------
+        goals : list
+            Goal names for which to add fulfillments.
+        fulfillments : dict
+            Map of goal names and fulfillment texts.
+
+        Returns
+        -------
+        string
+            Contains one fulfillment text as a wikitext list.
+        """
+        fulfillment_text = ""
+        for goal in goals:
+            fulfillment_text += "\n* {}".format(fulfillments[goal])
+        return fulfillment_text
