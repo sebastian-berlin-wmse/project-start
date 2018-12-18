@@ -180,6 +180,10 @@ if __name__ == "__main__":
     with open(args.projects_file[0]) as file_:
         projects_reader = csv.DictReader(file_, delimiter="\t")
         for row in projects_reader:
+            superproject = row["Överprojekt"]
+            if superproject:
+                # Don't add anything for subprojects.
+                continue
             logging.info(
                 "Adding project '{}'.".format(row["Svenskt projektnamn"])
             )
