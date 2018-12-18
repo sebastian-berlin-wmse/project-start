@@ -44,7 +44,8 @@ class Wiki:
         Parameters
         ----------
         name : str
-            The project name in Swedish. This will be used as title for the page.
+            The project name in Swedish. This will be used as title
+            for the page.
         description : str
             Passed to template as parameter "beskrivning".
         partners : str
@@ -234,7 +235,8 @@ class Wiki:
     def add_categories(self, project, year, area):
         """Add categories to the project's category page.
 
-        Adds the project category to two categories: one for year and one for area.
+        Adds the project category to two categories: one for year and
+        one for area.
 
         Parameters
         ----------

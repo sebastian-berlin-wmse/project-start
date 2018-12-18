@@ -161,16 +161,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--year",
         "-y",
-        help="Year for the projects created. If not given, the current year will be used."
+        help="Year for the projects created. If not given, the current year will be used."  # noqa: E501
     )
     parser.add_argument(
         "projects_file",
-        help="Path to a file containing project information. The data should be tab separated values.",
+        help="Path to a file containing project information. The data should be tab separated values.",  # noqa: E501
         nargs=1
     )
     parser.add_argument(
         "goal_file",
-        help="Path to a file containing information about project goals. The data should be tab separated values.",
+        help="Path to a file containing information about project goals. The data should be tab separated values.",  # noqa: E501
         nargs=1
     )
     args = parser.parse_args()
