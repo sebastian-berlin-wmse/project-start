@@ -44,7 +44,7 @@ class Wiki:
         Parameters
         ----------
         name : str
-            The project name. This will be used as title for the page.
+            The project name in Swedish. This will be used as title for the page.
         description : str
             Passed to template as parameter "beskrivning".
         partners : str
@@ -70,7 +70,7 @@ class Wiki:
         Parameters
         ----------
         project : str
-            The project name.
+            The project name in Swedish.
         email_prefix : str
             Passed to template as parameter "e-post_prefix".
 
@@ -99,7 +99,7 @@ class Wiki:
         Parameters
         ----------
         project : str
-            The project name.
+            The project name in Swedish.
         title : str
             The title of the subpage. Only the prefix, i.e. the
             substring after the last slash. This will be prepended by
@@ -132,7 +132,7 @@ class Wiki:
         Parameters
         ----------
         project : str
-            The project name.
+            The project name in Swedish.
 
         """
         title = "Global_Metrics"
@@ -148,7 +148,7 @@ class Wiki:
         Parameters
         ----------
         project : str
-            The project name.
+            The project name in Swedish.
 
         """
         title = "Omnämnande"
@@ -174,7 +174,7 @@ class Wiki:
         Parameters
         ----------
         project : str
-            The project name.
+            The project name in Swedish.
         owner : str
             Passed to template as parameter "ansvarig".
         start : str
@@ -230,3 +230,23 @@ class Wiki:
         for goal in goals:
             fulfillment_text += "\n* {}".format(fulfillments[goal])
         return fulfillment_text
+
+    def add_categories(self, project, year, area):
+        """Add categories to the project's category page.
+
+        Adds the project category to two categories: one for year and one for area.
+
+        Parameters
+        ----------
+        project : str
+            The project name in Swedish.
+        year : int
+            The year category to add the project category to.
+        area : str
+            The area category to add the project category to.
+        """
+        year_category = "Projekt {}".format(year)
+        page = Page(self._site, project, "Kategori")
+        page.text = "[[Kategori:{}]]".format(year_category)
+        page.text += "\n[[Kategori:{}]]".format(area)
+        page.save("[TEST] Skapa projektkategori.")

@@ -4,6 +4,7 @@ import argparse
 import csv
 import logging
 from collections import OrderedDict
+import datetime
 
 from wiki import Wiki
 from phab import Phab
@@ -131,6 +132,12 @@ def add_wiki_pages(row, phab_id, phab_name):
         project_goals,
         goal_fulfillments
     )
+    if args.year:
+        year = args.year
+    else:
+        year = datetime.date.today().year
+    area = row["Område"]
+    wiki.add_categories(name, year, area)
 
 
 def add_phab_project(row):
@@ -151,6 +158,11 @@ if __name__ == "__main__":
     phab = Phab()
     logging.basicConfig(level=logging.DEBUG)
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--year",
+        "-y",
+        help="Year for the projects created. If not given, the current year will be used."
+    )
     parser.add_argument(
         "projects_file",
         help="Path to a file containing project information. The data should be tab separated values.",
