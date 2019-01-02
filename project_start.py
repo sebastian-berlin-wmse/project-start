@@ -154,14 +154,21 @@ def add_phab_project(row):
     return phab.add_project(name, description)
 
 if __name__ == "__main__":
-    wiki = Wiki()
-    phab = Phab()
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s[%(levelname)s](%(module)s): %(message)s"
+    )
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--year",
         "-y",
         help="Year for the projects created. If not given, the current year will be used."  # noqa: E501
+    )
+    parser.add_argument(
+        "--dry-run",
+        "-d",
+        help="Don't write anything to the target platforms.",
+        action="store_true"
     )
     parser.add_argument(
         "projects_file",
@@ -174,6 +181,8 @@ if __name__ == "__main__":
         nargs=1
     )
     args = parser.parse_args()
+    wiki = Wiki(args.dry_run)
+    phab = Phab(args.dry_run)
     with open(args.goal_file[0]) as file_:
         goals_reader = csv.reader(file_, delimiter="\t")
         goals, goal_fulfillments = read_goals(goals_reader)

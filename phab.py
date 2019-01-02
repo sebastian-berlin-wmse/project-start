@@ -27,7 +27,15 @@ class Phab:
     """Handles Phabricator interaction.
 
     Uses the Conduit API for requests.
+
+    Attributes
+    ----------
+    _dry_run : bool
+        If True, no data is written to Phabricator.
     """
+
+    def __init__(self, dry_run):
+        self._dry_run = dry_run
 
     def add_project(self, name, description):
         """Add project.
@@ -48,8 +56,11 @@ class Phab:
             Project id and name of the project that was created.
 
         """
-        parent_phid = self._get_project_phid(PARENT_PROJECT_ID)
         phab_name = self._to_phab_project_name(name)
+        if self._dry_run:
+            return 1, phab_name
+        response = {"result": {"object": {"id": "1"}}}
+        parent_phid = self._get_project_phid(PARENT_PROJECT_ID)
         parameters = {
             "transactions": {
                 "0": {

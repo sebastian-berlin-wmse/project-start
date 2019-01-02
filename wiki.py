@@ -26,9 +26,12 @@ class Wiki:
     ----------
     _site : Site
         `Site` object used by Pywikibot
+    _dry_run : bool
+        If True, no data is written to the wiki.
     """
 
-    def __init__(self):
+    def __init__(self, dry_run):
+        self._dry_run = dry_run
         self._site = Site()
 
     def add_project_page(
@@ -60,7 +63,10 @@ class Wiki:
         page = Page(self._site, name, PROJECT_NAMESPACE)
         content = "{}".format(template)
         page.text = content
-        page.save("[TEST] Skapa projektsida.")
+        logging.debug("Writing to project page:")
+        logging.debug(page.text)
+        if not self._dry_run:
+            page.save("[TEST] Skapa projektsida.")
 
     def add_volunteer_subpage(self, project, email_prefix):
         """Add a volunteer subpage under the project page.
@@ -122,7 +128,8 @@ class Wiki:
         page.text = "{}".format(template.multiline_string())
         logging.debug("Writing to subpage '{}'.".format(page))
         logging.debug(page.text)
-        page.save(summary)
+        if not self._dry_run:
+            page.save(summary)
 
     def add_global_metrics_subpage(self, project):
         """Add a global metrics subpage under the project page.
@@ -251,4 +258,7 @@ class Wiki:
         page = Page(self._site, project, "Kategori")
         page.text = "[[Kategori:{}]]".format(year_category)
         page.text += "\n[[Kategori:{}]]".format(area)
-        page.save("[TEST] Skapa projektkategori.")
+        logging.debug("Writing to category page:")
+        logging.debug(page.text)
+        if not self._dry_run:
+            page.save("[TEST] Skapa projektkategori.")
