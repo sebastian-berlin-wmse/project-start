@@ -190,11 +190,24 @@ if __name__ == "__main__":
         projects_reader = csv.DictReader(file_, delimiter="\t")
         for row in projects_reader:
             superproject = row["Överprojekt"]
+            project_name = row["Engelskt projektnamn"]
             if superproject:
                 # Don't add anything for subprojects.
+                goals[project_name]["subproject"] = True
+                continue
+            if project_name not in goals:
+                logging.warn(
+                    "Project name '{}' found in projects file, but not in goals file. It will not be created.".format(project_name)  # noqa: E501
+                )
                 continue
             logging.info(
                 "Adding project '{}'.".format(row["Svenskt projektnamn"])
             )
             phab_id, phab_name = add_phab_project(row)
             add_wiki_pages(row, phab_id, phab_name)
+            goals[project_name]["added"] = True
+    for project, parameters in goals.items():
+        if "subproject" not in parameters and "added" not in parameters:
+            logging.warn(
+                "Project name '{}' found in goals file, but not in projects file. It will not be created.".format(project)  # noqa: E501
+            )
