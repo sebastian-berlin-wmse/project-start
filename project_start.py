@@ -154,10 +154,18 @@ def add_phab_project(row):
     return phab.add_project(name, description)
 
 if __name__ == "__main__":
+    logging_format = "%(asctime)s[%(levelname)s](%(module)s): %(message)s"
     logging.basicConfig(
         level=logging.DEBUG,
-        format="%(asctime)s[%(levelname)s](%(module)s): %(message)s"
+        format=logging_format,
+        filename="project_start.log"
     )
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.WARNING)
+    stream_handler.setFormatter(
+        logging.Formatter(logging_format)
+    )
+    logging.getLogger().addHandler(stream_handler)
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--year",
