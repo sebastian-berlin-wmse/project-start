@@ -86,7 +86,7 @@ class Wiki:
 
         if partners_string == "":
             return ""
-        partners = partners_string.split(",")
+        partners = partners_string.split(", ")
         bullet_list_string = "\n".join(["* {}".format(p) for p in partners])
         return bullet_list_string
 

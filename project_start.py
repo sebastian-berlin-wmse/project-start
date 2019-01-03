@@ -12,6 +12,7 @@ from phab import Phab
 
 PROJECT_ROW = 1
 FIRST_PROJECT_COLUMN = 4
+LAST_PROJECT_COLUMN = 56
 
 
 def read_goals(tsv):
@@ -33,16 +34,13 @@ def read_goals(tsv):
     goals = OrderedDict()
     fulfillments = {}
     for i, row in enumerate(tsv):
-        if row[0] == "Global Metrics":
-            # Stop reading when we get to the global metrics
-            # section; all goals have been read at this point.
+        if i == LAST_PROJECT_COLUMN:
+            # Stop reading when we all projects have been read.
             break
         elif row[0] == "":
             # Skip rows that have nothing in the first field; they
             # will not contain any goal numbers.
             continue
-        # Remove empty fields; these will mess up the indexing.
-        row = list(filter(None, row))
         description = row[0]
         name = get_goal_name(description)
         fulfillment = row[1]
@@ -56,7 +54,11 @@ def read_goals(tsv):
                     # find the correct project when we add goal
                     # values.
                     project = field
-                    if project != "":
+                    if project == "":
+                        # Temporarily add empty columns to maintain
+                        # the indices.
+                        goals[j] = None
+                    else:
                         # Use ordered dictionary here to keep the
                         # order of the goals when they are added to
                         # the template.
@@ -67,6 +69,8 @@ def read_goals(tsv):
                     project_name = list(goals.keys())[project_index]
                     if planned_value:
                         goals[project_name][name] = planned_value
+    # Remove any empty columns.
+    goals = {k: v for k, v in goals.items() if v}
     # Make it a normal dictionary, since we don't need to keep track
     # of project indices anymore.
     return dict(goals), fulfillments
