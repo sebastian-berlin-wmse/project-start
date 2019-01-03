@@ -57,7 +57,8 @@ class Wiki:
         """
         template = Template("Projekt-sida", True)
         template.add_parameter("beskrivning", description)
-        template.add_parameter("samarbetspartners", partners)
+        pratner_bullet_list = self._create_partner_bullet_list(partners)
+        template.add_parameter("samarbetspartners", pratner_bullet_list)
         template.add_parameter("phabricatorId", phab_id)
         template.add_parameter("phabricatorName", phab_name)
         page = Page(self._site, name, PROJECT_NAMESPACE)
@@ -67,6 +68,27 @@ class Wiki:
         logging.debug(page.text)
         if not self._dry_run:
             page.save("[TEST] Skapa projektsida.")
+
+    def _create_partner_bullet_list(self, partners_string):
+        """Create a wikitext bullet list of partners.
+
+        Parameters
+        ----------
+        partners_string : str
+            Comma separated partner names.
+
+        Returns
+        -------
+        str
+            The empty string if the input is empty, else a wikitext
+            bullet list with the partners.
+        """
+
+        if partners_string == "":
+            return ""
+        partners = partners_string.split(",")
+        bullet_list_string = "\n".join(["* {}".format(p) for p in partners])
+        return bullet_list_string
 
     def add_volunteer_subpage(self, project, email_prefix):
         """Add a volunteer subpage under the project page.
@@ -239,7 +261,7 @@ class Wiki:
 
         Returns
         -------
-        string
+        str
             Contains one fulfillment text as a wikitext list.
         """
         fulfillment_text = ""

@@ -83,7 +83,7 @@ def get_goal_name(description):
 
     Returns
     -------
-    string
+    str
         Goal name in the format "T.1.1".
     """
     return description.split(" - ")[0]
