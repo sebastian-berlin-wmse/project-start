@@ -171,6 +171,8 @@ class Wiki:
             end,
             financier,
             budget,
+            financier_2,
+            budget_2,
             goals,
             goal_fulfillments
     ):
@@ -193,6 +195,10 @@ class Wiki:
             Passed to template as parameter "finansiär".
         budget : str
             Passed to template as parameter "budget".
+        financier_2 : str
+            Passed to template as parameter "finansiär_2".
+        budget_2 : str
+            Passed to template as parameter "budget_2".
         goals : OrderedDict
             A map of goal names and planned values for this project.
         goals : dict
@@ -207,6 +213,8 @@ class Wiki:
         parameters["projektslut"] = end
         parameters["finansiär"] = financier
         parameters["budget"] = budget
+        parameters["finansiär_2"] = financier_2
+        parameters["budget_2"] = budget_2
         parameters["interna_mål"] = \
             Template("Måltexter 2018", parameters=goals)
         parameters["måluppfyllnad"] = \

@@ -41,6 +41,8 @@ def read_goals(tsv):
             # Skip rows that have nothing in the first field; they
             # will not contain any goal numbers.
             continue
+        # Remove empty fields; these will mess up the indexing.
+        row = list(filter(None, row))
         description = row[0]
         name = get_goal_name(description)
         fulfillment = row[1]
@@ -54,10 +56,11 @@ def read_goals(tsv):
                     # find the correct project when we add goal
                     # values.
                     project = field
-                    # Use ordered dictionary here to keep the
-                    # order of the goals when they are added to
-                    # the template.
-                    goals[project] = OrderedDict()
+                    if project != "":
+                        # Use ordered dictionary here to keep the
+                        # order of the goals when they are added to
+                        # the template.
+                        goals[project] = OrderedDict()
                 elif i > PROJECT_ROW:
                     planned_value = field
                     project_index = j - FIRST_PROJECT_COLUMN
@@ -120,6 +123,8 @@ def add_wiki_pages(row, phab_id, phab_name):
     end = row["Projektslut"]
     financier = row["Finansiär"]
     budget = row["Budget"]
+    financier_2 = row["Finansiär 2"]
+    budget_2 = row["Budget 2"]
     english_name = row["Engelskt projektnamn"]
     project_goals = goals[english_name]
     wiki.add_project_data_subpage(
@@ -129,6 +134,8 @@ def add_wiki_pages(row, phab_id, phab_name):
         end,
         financier,
         budget,
+        financier_2,
+        budget_2,
         project_goals,
         goal_fulfillments
     )
@@ -158,7 +165,7 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=logging.DEBUG,
         format=logging_format,
-        filename="project_start.log"
+        filename="project-start.log"
     )
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.WARNING)
@@ -201,7 +208,6 @@ if __name__ == "__main__":
             project_name = row["Engelskt projektnamn"]
             if superproject:
                 # Don't add anything for subprojects.
-                goals[project_name]["subproject"] = True
                 continue
             if project_name not in goals:
                 logging.warn(
@@ -215,7 +221,7 @@ if __name__ == "__main__":
             add_wiki_pages(row, phab_id, phab_name)
             goals[project_name]["added"] = True
     for project, parameters in goals.items():
-        if "subproject" not in parameters and "added" not in parameters:
+        if "added" not in parameters:
             logging.warn(
                 "Project name '{}' found in goals file, but not in projects file. It will not be created.".format(project)  # noqa: E501
             )
