@@ -64,10 +64,10 @@ class Wiki:
         page = Page(self._site, name, PROJECT_NAMESPACE)
         content = "{}".format(template)
         page.text = content
-        logging.debug("Writing to project page:")
+        logging.debug("Writing to project page '{}'".format(page.title()))
         logging.debug(page.text)
         if not self._dry_run:
-            page.save("[TEST] Skapa projektsida.")
+            page.save("Skapa projektsida.")
 
     def _create_partner_bullet_list(self, partners_string):
         """Create a wikitext bullet list of partners.
@@ -105,7 +105,7 @@ class Wiki:
 
         """
         title = "Frivillig"
-        summary = "[TEST] Skapa undersida för frivilliga."
+        summary = "Skapa undersida för frivilliga."
         parameters = {"e-post_prefix": email_prefix}
         self._add_subpage(
             project,
@@ -148,7 +148,7 @@ class Wiki:
             for key, value in template_parameters.items():
                 template.add_parameter(key, value)
         page.text = "{}".format(template.multiline_string())
-        logging.debug("Writing to subpage '{}'.".format(page))
+        logging.debug("Writing to subpage '{}'.".format(page.title()))
         logging.debug(page.text)
         if not self._dry_run:
             page.save(summary)
@@ -166,7 +166,7 @@ class Wiki:
 
         """
         title = "Global_Metrics"
-        summary = "[TEST] Skapa undersida för global metrics."
+        summary = "Skapa undersida för global metrics."
         self._add_subpage(project, title, summary, "Global Metrics-sida")
 
     def add_mentions_subpage(self, project):
@@ -182,7 +182,7 @@ class Wiki:
 
         """
         title = "Omnämnande"
-        summary = "[TEST] Skapa undersida för omnämnande."
+        summary = "Skapa undersida för omnämnande."
         self._add_subpage(project, title, summary, "Omnämnande-sida")
 
     def add_project_data_subpage(
@@ -228,7 +228,7 @@ class Wiki:
 
         """
         title = "Projektdata"
-        summary = "[TEST] Skapa undersida för projektdata."
+        summary = "Skapa undersida för projektdata."
         parameters = OrderedDict()
         parameters["ansvarig"] = owner
         parameters["projektstart"] = start
@@ -272,8 +272,8 @@ class Wiki:
     def add_categories(self, project, year, area):
         """Add categories to the project's category page.
 
-        Adds the project category to two categories: one for year and
-        one for area.
+        Adds the project category to categories for year and area, if
+        given.
 
         Parameters
         ----------
@@ -282,13 +282,15 @@ class Wiki:
         year : int
             The year category to add the project category to.
         area : str
-            The area category to add the project category to.
+            The area category to add the project category to. If the
+            empty string, no area category is added.
         """
         year_category = "Projekt {}".format(year)
         page = Page(self._site, project, "Kategori")
         page.text = "[[Kategori:{}]]".format(year_category)
-        page.text += "\n[[Kategori:{}]]".format(area)
-        logging.debug("Writing to category page:")
+        if area:
+            page.text += "\n[[Kategori:{}]]".format(area)
+        logging.debug("Writing to category page '{}'".format(page.title()))
         logging.debug(page.text)
         if not self._dry_run:
-            page.save("[TEST] Skapa projektkategori.")
+            page.save("Skapa projektkategori.")
