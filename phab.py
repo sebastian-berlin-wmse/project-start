@@ -1,4 +1,6 @@
 import logging
+from time import time
+from time import sleep
 
 import requests
 
@@ -15,12 +17,14 @@ PARENT_PROJECT_ID : int
     project. E.g. in
     https://phabricator.wikimedia.org/project/profile/2480/ the
     project id is 2048.
-
+REQUEST_DELAY : float
+    Minimum time between requests, in seconds.
 """
 
 API_TOKEN = "api-..."
 API_URL = "https://.../api"
 PARENT_PROJECT_ID = 0
+REQUEST_DELAY = 10.0
 
 
 class Phab:
@@ -32,10 +36,13 @@ class Phab:
     ----------
     _dry_run : bool
         If True, no data is written to Phabricator.
+    _last_request_time : float
+        Time when last request was made, in seconds.
     """
 
     def __init__(self, dry_run):
         self._dry_run = dry_run
+        self._last_request_time = 0.0
 
     def add_project(self, name, description):
         """Add project.
@@ -59,7 +66,6 @@ class Phab:
         phab_name = self._to_phab_project_name(name)
         if self._dry_run:
             return 1, phab_name
-        response = {"result": {"object": {"id": "1"}}}
         parent_phid = self._get_project_phid(PARENT_PROJECT_ID)
         parameters = {
             "transactions": {
@@ -123,11 +129,15 @@ class Phab:
         PhabApiError
             If the Conduit API response contains an error.
         """
+        wait_time = self._last_request_time - time() + REQUEST_DELAY
+        if wait_time > 0:
+            sleep(wait_time)
         parameters = self._to_phab_parameters(parameters_dict)
         parameters["api.token"] = API_TOKEN
         logging.debug(
             "POST to Phabricator API on {}: {}".format(API_URL, parameters)
         )
+        self._last_request_time = time()
         response = requests.post(
             "{}/{}".format(API_URL, endpoint),
             parameters
