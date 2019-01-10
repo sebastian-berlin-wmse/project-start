@@ -55,19 +55,24 @@ class Wiki:
             Passed to template as parameter "samarbetspartners".
 
         """
-        template = Template("Projekt-sida", True)
-        template.add_parameter("beskrivning", description)
-        pratner_bullet_list = self._create_partner_bullet_list(partners)
-        template.add_parameter("samarbetspartners", pratner_bullet_list)
-        template.add_parameter("phabricatorId", phab_id)
-        template.add_parameter("phabricatorName", phab_name)
         page = Page(self._site, name, PROJECT_NAMESPACE)
-        content = "{}".format(template)
-        page.text = content
-        logging.debug("Writing to project page '{}'".format(page.title()))
-        logging.debug(page.text)
-        if not self._dry_run:
-            page.save("Skapa projektsida.")
+        if page.exists():
+            logging.warning(
+                "Project page '{}' already exists. It will not be created.".format(page.title())  # noqa: E501
+            )
+        else:
+            template = Template("Projekt-sida", True)
+            template.add_parameter("beskrivning", description)
+            pratner_bullet_list = self._create_partner_bullet_list(partners)
+            template.add_parameter("samarbetspartners", pratner_bullet_list)
+            template.add_parameter("phabricatorId", phab_id)
+            template.add_parameter("phabricatorName", phab_name)
+            content = "{}".format(template)
+            page.text = content
+            logging.debug("Writing to project page '{}'".format(page.title()))
+            logging.debug(page.text)
+            if not self._dry_run:
+                page.save("Skapa projektsida.")
 
     def _create_partner_bullet_list(self, partners_string):
         """Create a wikitext bullet list of partners.
@@ -82,8 +87,8 @@ class Wiki:
         str
             The empty string if the input is empty, else a wikitext
             bullet list with the partners.
-        """
 
+        """
         if partners_string == "":
             return ""
         partners = partners_string.split(", ")
@@ -143,15 +148,22 @@ class Wiki:
         """
         full_title = "{}/{}".format(project, title)
         page = Page(self._site, full_title, PROJECT_NAMESPACE)
-        template = Template(template_name, True)
-        if template_parameters:
-            for key, value in template_parameters.items():
-                template.add_parameter(key, value)
-        page.text = "{}".format(template.multiline_string())
-        logging.debug("Writing to subpage '{}'.".format(page.title()))
-        logging.debug(page.text)
-        if not self._dry_run:
-            page.save(summary)
+        if page.exists():
+            logging.warning(
+                "Subpage '{}' already exists. It will not be created.".format(
+                    page.title()
+                )
+            )
+        else:
+            template = Template(template_name, True)
+            if template_parameters:
+                for key, value in template_parameters.items():
+                    template.add_parameter(key, value)
+            page.text = "{}".format(template.multiline_string())
+            logging.debug("Writing to subpage '{}'.".format(page.title()))
+            logging.debug(page.text)
+            if not self._dry_run:
+                page.save(summary)
 
     def add_global_metrics_subpage(self, project):
         """Add a global metrics subpage under the project page.
@@ -287,10 +299,15 @@ class Wiki:
         """
         year_category = "Projekt {}".format(year)
         page = Page(self._site, project, "Kategori")
-        page.text = "[[Kategori:{}]]".format(year_category)
-        if area:
-            page.text += "\n[[Kategori:{}]]".format(area)
-        logging.debug("Writing to category page '{}'".format(page.title()))
-        logging.debug(page.text)
-        if not self._dry_run:
-            page.save("Skapa projektkategori.")
+        if page.exists():
+            logging.warning(
+                "Category page '{}' already exists. It will not be created.".format(page.title())  # noqa: E501
+            )
+        else:
+            page.text = "[[Kategori:{}]]".format(year_category)
+            if area:
+                page.text += "\n[[Kategori:{}]]".format(area)
+            logging.debug("Writing to category page '{}'".format(page.title()))
+            logging.debug(page.text)
+            if not self._dry_run:
+                page.save("Skapa projektkategori.")

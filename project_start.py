@@ -200,7 +200,7 @@ if __name__ == "__main__":
         nargs=1
     )
     args = parser.parse_args()
-    logging.debug("Creating projects.")
+    logging.info("Creating projects.")
     wiki = Wiki(args.dry_run)
     phab = Phab(args.dry_run)
     with open(args.goal_file[0]) as file_:

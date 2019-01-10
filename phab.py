@@ -63,51 +63,64 @@ class Phab:
             Project id and name of the project that was created.
 
         """
-        phab_name = self._to_phab_project_name(name)
-        if self._dry_run:
-            return 1, phab_name
-        parent_phid = self._get_project_phid(PARENT_PROJECT_ID)
-        parameters = {
-            "transactions": {
-                "0": {
-                    "type": "name",
-                    "value": phab_name
-                },
-                "1": {
-                    "type": "description",
-                    "value": description
-                },
-                "2": {
-                    "type": "parent",
-                    "value": parent_phid
+        parent_phid, parent_name = self._get_project_phid(PARENT_PROJECT_ID)
+        phab_name = self._to_phab_project_name(name, parent_name)
+        project_id = self._get_project_id(phab_name)
+        if project_id is not None:
+            logging.warn(
+                "Project '{}' already exists. It will not be created.".format(
+                    phab_name
+                )
+            )
+        else:
+            parameters = {
+                "transactions": {
+                    "0": {
+                        "type": "name",
+                        "value": phab_name
+                    },
+                    "1": {
+                        "type": "description",
+                        "value": description
+                    },
+                    "2": {
+                        "type": "parent",
+                        "value": parent_phid
+                    }
                 }
             }
-        }
-        response = self._make_request("project.edit", parameters)
-        project_id = response["result"]["object"]["id"]
+            if self._dry_run:
+                project_id = 1
+            else:
+                response = self._make_request("project.edit", parameters)
+                project_id = response["result"]["object"]["id"]
         return project_id, phab_name
 
-    def _get_project_phid(self, id_):
-        """Get the PHID of a project.
+    def _get_project_phid_and_name(self, id_):
+        """Get the PHID and name of a project.
 
-        The format of the PHID is "PHID-PROJ-..." for projects. Note
-        that this is not the same as the project id, which is just a
-        number. Uses the endpoint "project.search".
+        Uses the Conduit endpoint "project.search".
 
         Parameters
         ----------
         id_ : int
-            Id of the project to get PHID for.
+            Id of the project to get info for.
 
         Returns
         -------
         str
-            PHID for the given project.
+            PHID of the given project. The format of the PHID is
+            "PHID-PROJ-..." for projects. Note that this is not the
+            same as the project id, which is just a number.
+        str
+            Name of the given project.
 
         """
         parameters = {"constraints": {"ids": [id_]}}
         response = self._make_request("project.search", parameters)
-        return response["result"]["data"][0]["phid"]
+        phid = response["result"]["data"][0]["phid"]
+        name = response["result"]["data"][0]["fields"]["name"]
+        return phid, name
 
     def _make_request(self, endpoint, parameters_dict):
         """Make a request to the Conduit API.
@@ -131,6 +144,7 @@ class Phab:
         """
         wait_time = self._last_request_time - time() + REQUEST_DELAY
         if wait_time > 0:
+            logging.debug("Waiting for {} seconds before making the next request to Conduit.".format(wait_time))  # noqa: E501
             sleep(wait_time)
         parameters = self._to_phab_parameters(parameters_dict)
         parameters["api.token"] = API_TOKEN
@@ -225,10 +239,27 @@ class Phab:
                 phab_parameters[parameter_key] = value
         return phab_parameters
 
-    def _to_phab_project_name(self, name):
+    def _to_phab_project_name(self, name, parent_name):
         """Convert a project name to follow Wikimedia conventions.
 
-        Replaces spaces with dashes.
+        Parameters
+        ----------
+        name : str
+            Project name.
+        parent_name : str
+            Parent project name.
+
+        Returns
+        -------
+        str
+            Project name with spaces replaced by dashes and prefixed
+            by the parent name.
+
+        """
+        return "{}-{}".format(parent_name, name.replace(" ", "-"))
+
+    def _get_project_id(self, name):
+        """Get the id of a project.
 
         Parameters
         ----------
@@ -237,11 +268,16 @@ class Phab:
 
         Returns
         -------
-        str
-            Project name with spaces replaced by dashes.
+        int
+            Project id.
 
         """
-        return name.replace(" ", "-")
+        parameters = {"constraints": {"query": name}}
+        response = self._make_request("project.search", parameters)
+        if len(response["result"]["data"]) == 0:
+            return None
+        else:
+            return response["result"]["data"][0]["id"]
 
 
 class PhabApiError(Exception):
