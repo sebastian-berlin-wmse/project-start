@@ -1,0 +1,46 @@
+# Parameters for the input from the goals spreadsheet.
+goals:
+    # The index of the row with the project names.
+    project_row:
+    # The index of the row with the last project numbers.
+    last_row:
+    # The index of the column with first project.
+    first_project_column:
+# Parameters for wiki pages
+wiki:
+    # The label (first row value) for the Swedish project names.
+    name:
+    # Name of the template used to create the project page.
+    project_template:
+    # Mapping between the parameter names in the project page template
+    # and the labels for their values.
+    project_parameters:
+        template_parameter: label
+    # A list of subpages that should be created under the project page.
+    subpages:
+        # Title of the subpage.
+        - title:
+        # Name of the template used to create subpage.
+          template_name:
+          # Mapping between the parameter names in the subpage
+          # template and the labels for their values.
+          parameters:
+            template_parameter: label
+          # Add this only if the subpage should include goals.
+          add_goals_parameters:
+            # Template parameter where the goals template should be
+            # put and the name of the template to use for the goals.
+            template_parameter: Template:Goals
+# Parameters for Phabricator
+phab:
+    # API-token for Conduit.
+    api_token: api-...
+    # URL to the API.
+    api_url: https://.../api
+    # Id of the project that created projects will be subprojects
+    # of. This can be found in the URL of a project, e.g. in
+    # https://phabricator.wikimedia.org/project/profile/2480/
+    # the id is 2480
+    parent_project_id:
+    # Time in seconds to wait between making request.
+    request_delay:
