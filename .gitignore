@@ -8,6 +8,7 @@ pywikibot.lwp
 throttle.ctrl
 user-password.py
 pyvenv.cfg
+*.yaml
 
 __pycache__/
 bin/

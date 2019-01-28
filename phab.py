@@ -4,28 +4,6 @@ from time import sleep
 
 import requests
 
-"""
-Attributes
-----------
-API_TOKEN : str
-    Token to use when sending requests to the Conduit API.
-API_URL : str
-    URL to the Phabricator API to send requests to.
-PARENT_PROJECT_ID : int
-    Id of the project that will be parent project for all added
-    projects. This can be found in the URL for the profile page of a
-    project. E.g. in
-    https://phabricator.wikimedia.org/project/profile/2480/ the
-    project id is 2048.
-REQUEST_DELAY : float
-    Minimum time between requests, in seconds.
-"""
-
-API_TOKEN = "api-..."
-API_URL = "https://.../api"
-PARENT_PROJECT_ID = 0
-REQUEST_DELAY = 10.0
-
 
 class Phab:
     """Handles Phabricator interaction.
@@ -34,13 +12,16 @@ class Phab:
 
     Attributes
     ----------
+    _config : dict
+        Parameters read from configuration file.
     _dry_run : bool
         If True, no data is written to Phabricator.
     _last_request_time : float
         Time when last request was made, in seconds.
     """
 
-    def __init__(self, dry_run):
+    def __init__(self, config, dry_run):
+        self._config = config
         self._dry_run = dry_run
         self._last_request_time = 0.0
 
@@ -63,7 +44,8 @@ class Phab:
             Project id and name of the project that was created.
 
         """
-        parent_phid, parent_name = self._get_project_phid(PARENT_PROJECT_ID)
+        parent_phid, parent_name = \
+            self._get_project_phid_and_name(self._config["parent_project_id"])
         phab_name = self._to_phab_project_name(name, parent_name)
         project_id = self._get_project_id(phab_name)
         if project_id is not None:
@@ -142,18 +124,22 @@ class Phab:
         PhabApiError
             If the Conduit API response contains an error.
         """
-        wait_time = self._last_request_time - time() + REQUEST_DELAY
+        wait_time = self._last_request_time - time() + \
+            self._config["request_delay"]
         if wait_time > 0:
             logging.debug("Waiting for {} seconds before making the next request to Conduit.".format(wait_time))  # noqa: E501
             sleep(wait_time)
         parameters = self._to_phab_parameters(parameters_dict)
-        parameters["api.token"] = API_TOKEN
+        parameters["api.token"] = self._config["api_token"]
         logging.debug(
-            "POST to Phabricator API on {}: {}".format(API_URL, parameters)
+            "POST to Phabricator API on {}: {}".format(
+                self._config["api_url"],
+                parameters
+            )
         )
         self._last_request_time = time()
         response = requests.post(
-            "{}/{}".format(API_URL, endpoint),
+            "{}/{}".format(self._config["api_url"], endpoint),
             parameters
         ).json()
         if response["error_info"]:
