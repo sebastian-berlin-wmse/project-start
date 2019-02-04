@@ -11,20 +11,22 @@ class Template:
     _subst : bool
         Whether the template should be substituted or not. If True,
         add "subst:" after the initial "{{" in the template string.
-    _parameters : OrderedDict
+    _parameters : list or OrderedDict
         The parameters to pass to the template.
 
     """
     def __init__(self, name, subst=False, parameters=None):
         self._name = name
         self._subst = subst
-        if parameters is not None:
-            self._parameters = parameters
-        else:
+        if parameters is None:
             self._parameters = OrderedDict()
+        elif type(parameters) == list:
+            self._parameters = {i: p for i, p in enumerate(parameters, 1)}
+        else:
+            self._parameters = parameters
 
     def __str__(self):
-        output = "{{{{{}{}".format("subst:" * self._subst, self._name)
+        output = "{{" + "{}{}".format("subst:" * self._subst, self._name)
         if self._parameters:
             for name, value in self._parameters.items():
                 if isinstance(value, Template):
@@ -51,7 +53,7 @@ class Template:
         self._parameters[name] = value
 
     def multiline_string(self, nesting_level=0):
-        output = "{{{{{}{}".format("subst:" * self._subst, self._name)
+        output = "{{" + "{}{}".format("subst:" * self._subst, self._name)
         if self._parameters:
             indentation = "  " * nesting_level
             for name, value in self._parameters.items():
@@ -64,13 +66,13 @@ class Template:
                     name,
                     value_string
                 )
-            output += "\n{}}}}}".format(indentation)
+            output += "\n{}".format(indentation) + "}}"
         else:
             output += "}}"
         return output
 
     def oneline_string(self):
-        output = "{{{{{}{}".format("subst:" * self._subst, self._name)
+        output = "{{" + "{}{}".format("subst:" * self._subst, self._name)
         if self._parameters:
             for name, value in self._parameters.items():
                 output += "|{}={}".format(name, value)
