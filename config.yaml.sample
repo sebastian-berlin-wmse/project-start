@@ -31,6 +31,45 @@ wiki:
             # Template parameter where the goals template should be
             # put and the name of the template to use for the goals.
             template_parameter: Template:Goals
+    year_pages:
+        # Page where the operational plan can be found.
+        operational_plan:
+        # Map of pages that will be created by substituting
+        # templates. Instances of "<YEAR>" in the title are replaced
+        # by the actual year.
+        simple:
+            Title: Template
+        # Parameters for project year page.
+        projects:
+            title:
+            template:
+            # Special case for the external pseudo program.
+            external:
+                number:
+                name:
+        # Parameters for program overview page.
+        program_overview:
+            # Colours to use in the program headers.
+            colours:
+                - #123456
+            title:
+            templates:
+                # Template that is substed to create the page.
+                page:
+                # Templates that are used by the page template. Maps
+                # parameter name in the page template to template
+                # name.
+                parameter: Template
+        # Year categories.
+        categories:
+            # This category is added to each category page.
+            general: Category
+            # Category page to add. Key is page title (replaces
+            # "<YEAR>" with actual year). Value, if present is an
+            # extra category to add to the page.
+            pages:
+                Title 1:
+                Title 2: Extra Category
 # Parameters for Phabricator
 phab:
     # API-token for Conduit.

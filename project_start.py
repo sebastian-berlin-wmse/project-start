@@ -115,7 +115,7 @@ def get_goal_name(description):
     return description.split(" - ")[0]
 
 
-def add_wiki_pages(project_information, phab_id, phab_name):
+def add_wiki_project_pages(project_information, phab_id, phab_name):
     """Add a project page to the wiki.
 
     Also adds relevant subpages.
@@ -129,7 +129,6 @@ def add_wiki_pages(project_information, phab_id, phab_name):
         Name of the project on Phabricator
     """
     logging.info("Adding wiki pages.")
-    name = project_information["Svenskt projektnamn"]
     english_name = project_information["Engelskt projektnamn"]
     wiki.add_project_page(
         phab_id,
@@ -138,12 +137,9 @@ def add_wiki_pages(project_information, phab_id, phab_name):
         goals[english_name],
         goal_fulfillments
     )
-    if args.year:
-        year = args.year
-    else:
-        year = datetime.date.today().year
+    name = project_information["Svenskt projektnamn"]
     area = project_information["Område"]
-    wiki.add_categories(name, year, area)
+    wiki.add_project_categories(name, area)
 
 
 def add_phab_project(project_information):
@@ -206,11 +202,15 @@ if __name__ == "__main__":
     with open(config_path) as config_file:
         config = yaml.safe_load(config_file)
     logging.info("Loaded config from '{}'".format(config_path))
-    wiki = Wiki(config["wiki"], args.dry_run, args.overwrite_wiki)
-    phab = Phab(config["phab"], args.dry_run)
     with open(args.goal_file[0]) as file_:
         goals_reader = csv.reader(file_, delimiter="\t")
         goals, goal_fulfillments = read_goals(goals_reader)
+    if args.year:
+        year = args.year
+    else:
+        year = datetime.date.today().year
+    wiki = Wiki(config["wiki"], args.dry_run, args.overwrite_wiki, year)
+    phab = Phab(config["phab"], args.dry_run)
     with open(args.projects_file[0]) as file_:
         projects_reader = csv.DictReader(file_, delimiter="\t")
         for project_information in projects_reader:
@@ -230,10 +230,16 @@ if __name__ == "__main__":
                 )
             )
             phab_id, phab_name = add_phab_project(project_information)
-            add_wiki_pages(project_information, phab_id, phab_name)
+            add_wiki_project_pages(project_information, phab_id, phab_name)
             goals[project_name]["added"] = True
+            wiki.add_project(
+                project_information["Projektnummer"],
+                project_information["Svenskt projektnamn"]
+            )
+    wiki.parse_programs()
     for project, parameters in goals.items():
         if "added" not in parameters:
             logging.warn(
                 "Project name '{}' found in goals file, but not in projects file. It will not be created.".format(project)  # noqa: E501
             )
+    wiki.add_year_pages()
