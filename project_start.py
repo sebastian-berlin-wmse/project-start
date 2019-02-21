@@ -186,7 +186,7 @@ if __name__ == "__main__":
         default="config.yaml"
     )
     parser.add_argument(
-        "projects_file",
+        "project_file",
         help="Path to a file containing project information. The data should be tab separated values.",  # noqa: E501
         nargs=1
     )
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         year = datetime.date.today().year
     wiki = Wiki(config["wiki"], args.dry_run, args.overwrite_wiki, year)
     phab = Phab(config["phab"], args.dry_run)
-    with open(args.projects_file[0]) as file_:
+    with open(args.project_file[0]) as file_:
         projects_reader = csv.DictReader(file_, delimiter="\t")
         for project_information in projects_reader:
             superproject = project_information["Överprojekt"]
