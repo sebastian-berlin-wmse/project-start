@@ -32,8 +32,6 @@ wiki:
               e-post_prefix: e_mail
         - title: Global Metrics
           template_name: Mall:Global Metrics-sida
-        - title: Omnämnande
-          template_name: Omnämnande-sida
         - title: Projektdata
           template_name: Projektdata-sida
           add_goals_parameters:
@@ -55,6 +53,7 @@ wiki:
             Utbildning <YEAR>: Mall:Utbildning år
             Tjänsteresor <YEAR>: Mall:Tjänsteresor år
             Ansökningar <YEAR>: Mall:Ansökningar år
+            Omnämnande <YEAR>: Mall:Omnämnande år
             Ekonomiska rapporter <YEAR>: Mall:Ekonomiska rapporter
             Ledningsrapport <YEAR>: Mall:Ledningsrapport år
             Checklista för nytt år/<YEAR>: :Checklista för nytt år
@@ -84,6 +83,9 @@ wiki:
                 Projekt <YEAR>: Projekt efter verksamhetsår
                 Ledningsrapporter <YEAR>: Ledningsrapporter
                 Ansökningar <YEAR>: Ansökningar
+                Omnämnande <YEAR>:
+                    - Omnämnande
+                    - Media
                 Resor <YEAR>: Resor
                 Årsmöte <YEAR>: Årsmöte
                 Checklistor <YEAR>: Checklistor

@@ -72,6 +72,7 @@ class Wiki:
                 template.add_parameter(
                     template_parameter,
                     parameters[self._project_columns[label]])
+            template.add_parameter("year", self._year)
             template.add_parameter("phabricatorId", phab_id)
             template.add_parameter("phabricatorName", phab_name)
             content = "{}".format(template)
