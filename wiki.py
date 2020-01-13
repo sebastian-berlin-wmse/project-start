@@ -407,7 +407,8 @@ class Wiki:
 
         operational_plan_page = Page(
             self._site,
-            self._config["year_pages"]["operational_plan"]
+            self._make_year_title(
+                self._config["year_pages"]["operational_plan"])
         )
         # Get table string. This assumes that it is the first table on
         # the page.
@@ -427,7 +428,7 @@ class Wiki:
         for row in rows[1:]:
             # Skip first rows; we don't need the headers.
             if not row.rstrip("|}").strip():
-                # This is just the en table row, skip it.
+                # This is just the end table row, skip it.
                 continue
             # Split rows on pipes and remove formatting.
             cells = list(filter(None, map(
