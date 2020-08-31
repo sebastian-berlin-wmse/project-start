@@ -272,6 +272,7 @@ class Wiki:
         self._add_projects_year_page()
         self._add_program_overview_year_page()
         self._add_year_categories()
+        self._update_current_projects_template()
 
     def _make_year_title(self, raw_string):
         """Replace the placeholder "<YEAR>" with the actual year.
@@ -553,3 +554,42 @@ class Wiki:
                 else:
                     categories.append(extra_category)
             self._add_category_page(title, categories)
+
+    def _update_current_projects_template(self):
+        """Update the current projects template with the new projects."""
+        page_name = self._config["year_pages"]["current_projects_template"]
+        page = Page(self._site, page_name)
+        if page.exists() and not self._overwrite:
+            logging.warning(
+                "Page '{}' already exists. It will not be created.".format(
+                    page.title()
+                )
+            )
+            return
+
+        project_format = "[[{ns}:{{proj}}|{{proj}}]]".format(
+            ns=self._config["project_namespace"])
+        delimiter = "''' · '''"
+        template_data = {}
+        for program in self._programs:
+            projects = set()
+            for strategy in program.get('strategies'):
+                # projects sorted by id to get thematic grouping
+                projects.update(strategy.get("projects"))
+            template_data[program.get('name')] = delimiter.join(
+                [project_format.format(proj=self._projects[project])
+                 for project in sorted(projects)])
+
+        template = Template("Aktuella projekt/layout")
+        template.add_parameter("år", self._year)
+        template.add_parameter("access", template_data["Tillgång"])
+        template.add_parameter("use", template_data["Användning"])
+        template.add_parameter("community", template_data["Gemenskapen"])
+        template.add_parameter("enabling", template_data["Möjliggörande"])
+
+        page.text = template.multiline_string() + \
+            "\n<noinclude>{{Dokumentation}}</noinclude>"
+        logging.info("Writing to page '{}'.".format(page.title()))
+        logging.debug(page.text)
+        if not self._dry_run:
+            page.save()
