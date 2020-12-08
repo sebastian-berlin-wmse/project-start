@@ -221,6 +221,11 @@ if __name__ == "__main__":
     with open(args.project_file[0]) as file_:
         projects_reader = csv.DictReader(file_, delimiter="\t")
         for project_information in projects_reader:
+            if project_information[project_columns["skip"]]:
+                logging.info(
+                    "Skipping '{}', marked as inactive.".format(
+                        project_information[project_columns["english_name"]]))
+                continue
             superproject = project_information[
                 project_columns["super_project"]]
             project_name = project_information[
