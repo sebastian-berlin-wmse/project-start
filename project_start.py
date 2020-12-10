@@ -58,7 +58,8 @@ def read_goals(tsv, settings):
     """
     goals = OrderedDict()
     fulfillments = {}
-    for i, row in enumerate(tsv):
+    for i, unsanitized_row in enumerate(tsv):
+        row = sanitize(unsanitized_row)
         if i == settings["last_row"]:
             # Stop reading when we all projects have been read.
             break
@@ -101,6 +102,49 @@ def read_goals(tsv, settings):
     # Make it a normal dictionary, since we don't need to keep track
     # of project indices anymore.
     return dict(goals), fulfillments
+
+
+def sanitize(unsanitized):
+    """Sanitize a dict or list containing strings.
+
+    Parameters
+    ----------
+    unsanitized : iterator
+        Dictionary or list to sanitize
+
+    Returns
+    -------
+    iterator
+        Copy of input with sanitized strings
+    """
+    sanitized = None
+    if isinstance(unsanitized, dict):
+        sanitized = {
+            sanitize_string(k): sanitize_string(v) for
+            k, v in unsanitized.items()
+        }
+    elif isinstance(unsanitized, list):
+        sanitized = [sanitize_string(i) for i in unsanitized]
+    return sanitized
+
+
+def sanitize_string(unsanitized_string):
+    """Sanitize a strings.
+
+    * Strips leading and trailing whitespaces
+
+    Parameters
+    ----------
+    unsanitized_string : string
+        String to sanitize
+
+    Returns
+    -------
+    string
+        Sanitized string
+    """
+    sanitized_sring = unsanitized_string.strip()
+    return sanitized_sring
 
 
 def get_goal_name(description):
@@ -224,7 +268,7 @@ if __name__ == "__main__":
     with open(config_path) as config_file:
         config = yaml.safe_load(config_file)
     logging.info("Loaded config from '{}'".format(config_path))
-    with open(args.goal_file[0]) as file_:
+    with open(args.goal_file[0], newline="") as file_:
         goals_reader = csv.reader(file_, delimiter="\t")
         goals, goal_fulfillments = read_goals(goals_reader, config["goals"])
     if args.year:
@@ -235,9 +279,10 @@ if __name__ == "__main__":
     wiki = Wiki(config["wiki"], project_columns, args.dry_run,
                 args.overwrite_wiki, year)
     phab = Phab(config["phab"], args.dry_run)
-    with open(args.project_file[0]) as file_:
+    with open(args.project_file[0], newline="") as file_:
         projects_reader = csv.DictReader(file_, delimiter="\t")
-        for project_information in projects_reader:
+        for unsanitized_project_information in projects_reader:
+            project_information = sanitize(unsanitized_project_information)
             if project_information[project_columns["skip"]]:
                 logging.info(
                     "Skipping '{}', marked as inactive.".format(
