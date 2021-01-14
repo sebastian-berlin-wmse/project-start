@@ -36,6 +36,7 @@ class Wiki:
         self._year = year
         self._projects = {}
         self._programs = []
+        self._touched_pages = []
 
     def add_project_page(
             self,
@@ -80,8 +81,7 @@ class Wiki:
             page.text = content
             logging.info("Writing to project page '{}'".format(page.title()))
             logging.debug(page.text)
-            if not self._dry_run:
-                page.save(summary=self._config["edit_summary"])
+            self._write_page(page)
             for subpage in self._config["subpages"]:
                 subpage_parameters = {
                     "år": self._year  # always pass the year parameter
@@ -111,6 +111,19 @@ class Wiki:
                     subpage["template_name"],
                     subpage_parameters
                 )
+
+    def _write_page(self, page):
+        """Write a page unless this is a dry run.
+
+        Parameters
+        ----------
+        page : Page
+            The page to write to.
+
+        """
+        if not self._dry_run:
+            page.save(summary=self._config["edit_summary"])
+        self._touched_pages.append(page)
 
     def _add_subpage(
             self,
@@ -182,8 +195,7 @@ class Wiki:
             page.text = template.multiline_string()
             logging.info("Writing to page '{}'.".format(page.title()))
             logging.debug(page.text)
-            if not self._dry_run:
-                page.save(summary=self._config["edit_summary"])
+            self._write_page(page)
 
     def _create_goal_fulfillment_text(self, goals, fulfillments):
         """Create a string with the fulfillment texts for a set of goals.
@@ -253,8 +265,7 @@ class Wiki:
                     page.text += "[[Kategori:{}]]\n".format(category)
             logging.info("Writing to category page '{}'".format(page.title()))
             logging.debug(page.text)
-            if not self._dry_run:
-                page.save(summary=self._config["edit_summary"])
+            self._write_page(page)
 
     def add_year_pages(self):
         """Add pages for a new year.
@@ -591,8 +602,7 @@ class Wiki:
             "\n<noinclude>{{Dokumentation}}</noinclude>"
         logging.info("Writing to page '{}'.".format(page.title()))
         logging.debug(page.text)
-        if not self._dry_run:
-            page.save(summary=self._config["edit_summary"])
+        self._write_page(page)
 
     def _add_volunteer_tasks_page(self):
         """Add a page with volunteer tasks.
@@ -623,3 +633,10 @@ class Wiki:
             config["template"],
             parameters
         )
+
+    def log_report(self):
+        """Log a list of the pages that were modified.
+        """
+        logging.info("These pages were modified:")
+        for page in self._touched_pages:
+            logging.info(page.title())
