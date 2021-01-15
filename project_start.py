@@ -207,8 +207,43 @@ def add_phab_project(project_information, project_columns):
     return phab.add_project(name, description)
 
 
+def process_project(project_information, project_columns):
+    """Process a single project.
+
+    Parameters
+    ----------
+    project_information : dict
+    project_columns : dict
+    """
+    superproject = project_information[project_columns["super_project"]]
+    project_name = project_information[project_columns["english_name"]]
+    if superproject:
+        # Don't add anything for subprojects.
+        return
+    if project_name not in goals:
+        logging.warn(
+            "Project name '{}' found in projects file, but not in goals file. "
+            "It will not be created.".format(project_name)
+        )
+        return
+    logging.info(
+        "Processing project '{}'.".format(
+            project_information[project_columns["swedish_name"]]
+        )
+    )
+    phab_id, phab_name = add_phab_project(project_information, project_columns)
+    add_wiki_project_pages(project_information, project_columns,
+                           phab_id, phab_name)
+    goals[project_name]["added"] = True
+    wiki.add_project(
+        project_information[project_columns["project_id"]],
+        project_information[project_columns["swedish_name"]]
+    )
+
+
 def load_args():
     """Load and process command line arguments.
+
     Returns
     -------
     argparse.ArgumentParser
@@ -246,6 +281,12 @@ def load_args():
         default="config.yaml"
     )
     parser.add_argument(
+        "--project",
+        "-p",
+        help=("Single project (English or Swedish name) to create. "
+              "If not given, all projects will be processed.")
+    )
+    parser.add_argument(
         "project_file",
         help=("Path to a file containing project information. "
               "The data should be tab separated values."),
@@ -279,47 +320,47 @@ if __name__ == "__main__":
     wiki = Wiki(config["wiki"], project_columns, args.dry_run,
                 args.overwrite_wiki, year)
     phab = Phab(config["phab"], args.dry_run)
+
     with open(args.project_file[0], newline="") as file_:
         projects_reader = csv.DictReader(file_, delimiter="\t")
+        single_project_found = False
         for unsanitized_project_information in projects_reader:
             project_information = sanitize(unsanitized_project_information)
-            if project_information[project_columns["skip"]]:
+            if args.project:
+                if args.project not in (
+                        project_information[project_columns["swedish_name"]],
+                        project_information[project_columns["english_name"]]):
+                    continue
+                else:
+                    single_project_found = True
+                    wiki.single_project_info(
+                        project_information[project_columns["project_id"]],
+                        project_information[project_columns["swedish_name"]]
+                    )
+            elif project_information[project_columns["skip"]]:
+                # handle skip outside of process_project to allow specifying a
+                # single project to override the skip value.
                 logging.info(
                     "Skipping '{}', marked as inactive.".format(
-                        project_information[project_columns["english_name"]]))
+                        project_information[
+                            project_columns["english_name"]]))
                 continue
-            superproject = project_information[
-                project_columns["super_project"]]
-            project_name = project_information[
-                project_columns["english_name"]]
-            if superproject:
-                # Don't add anything for subprojects.
-                continue
-            if project_name not in goals:
+            process_project(project_information, project_columns)
+
+    if not args.project:
+        # don't create these pages or run the checks unless it's a full run
+        wiki.parse_programs()
+        for project, parameters in goals.items():
+            if "added" not in parameters:
                 logging.warn(
-                    "Project name '{}' found in projects file, but not in goals file. It will not be created.".format(project_name)  # noqa: E501
+                    "Project name '{}' found in goals file, but not in "
+                    "projects file. It will not be created.".format(project)
                 )
-                continue
-            logging.info(
-                "Processing project '{}'.".format(
-                    project_information[project_columns["swedish_name"]]
-                )
-            )
-            phab_id, phab_name = add_phab_project(project_information,
-                                                  project_columns)
-            add_wiki_project_pages(project_information, project_columns,
-                                   phab_id, phab_name)
-            goals[project_name]["added"] = True
-            wiki.add_project(
-                project_information[project_columns["project_id"]],
-                project_information[project_columns["swedish_name"]]
-            )
-    wiki.parse_programs()
-    for project, parameters in goals.items():
-        if "added" not in parameters:
-            logging.warn(
-                "Project name '{}' found in goals file, but not in projects file. It will not be created.".format(project)  # noqa: E501
-            )
-    wiki.add_year_pages()
+        wiki.add_year_pages()
+    elif not single_project_found:
+        logging.warn(
+            "Project name '{}' could not be found in projects file. "
+            "It will not be created.".format(args.project)
+        )
 
     wiki.log_report()
