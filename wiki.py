@@ -6,6 +6,7 @@ from wikitables.util import ftag
 
 from pywikibot import Page, Site
 
+from const import Components
 from template import Template
 
 
@@ -27,37 +28,95 @@ class Wiki:
         labels
     """
 
-    def __init__(self, config, project_columns, dry_run, overwrite, year):
-        self._site = Site()
+    def __init__(
+            self,
+            config,
+            project_columns,
+            dry_run,
+            overwrite,
+            year,
+            goals,
+            goal_fulfillments,
+            components,
+            prompt_add_pages
+    ):
         self._config = config
         self._project_columns = project_columns
         self._dry_run = dry_run
         self._overwrite = overwrite
         self._year = year
+        self._goals = goals
+        self._goal_fulfillments = goal_fulfillments
+        self._components = components
+        self._prompt_add_pages = prompt_add_pages
+        self._site = Site()
         self._projects = {}
-        self._programs = []
+        self._programs = None
         self._touched_pages = []
 
     def add_project_page(
             self,
-            phab_id,
-            phab_name,
             parameters,
-            goals,
-            goal_fulfillments
+            phab_id,
+            phab_name
     ):
-        """Add the main project page.
+        """Add pages for a project.
+
+        Adds main page, subpages and categories.
 
         Parameters
         ----------
-        name : str
-            The project name in Swedish. This will be used as title
-            for the page.
-        description : str
-            Passed to template as parameter "beskrivning".
-        partners : str
-            Passed to template as parameter "samarbetspartners".
+        parameters : dict
+            Parameters for the project.
+        phab_id : int
+            Id for the project's Phabricator project.
+        phab_name : str
+            Name of the project's Phabricator project.
+        """
+        if (
+                self._components is None
+                or Components.PROJECT_MAIN_PAGE.value in self._components
+        ):
+            self._add_project_main_page(parameters, phab_id, phab_name)
+        if self._components is not None:
+            # Get the subpages from component selection.
+            subpages = [
+                self._config["subpages"][s - len(Components) - 1]
+                for s in self._components if s > len(Components)
+            ]
+        else:
+            subpages = self._config["subpages"]
 
+        name = parameters[self._project_columns["swedish_name"]]
+        for subpage in subpages:
+            self._add_subpage(
+                subpage,
+                parameters,
+                name
+            )
+
+        if self._goals:
+            english_name = parameters[self._project_columns["english_name"]]
+            self._goals[english_name]["added"] = True
+
+        if (
+                self._components is None
+                or Components.CATEGORIES.value in self._components
+        ):
+            area = self._project_columns["area"]
+            self.add_project_categories(name, area)
+
+    def _add_project_main_page(self, parameters, phab_id, phab_name):
+        """Add the main project page, i.e. "Projekt:NAME".
+
+        Parameters
+        ----------
+        parameters : dict
+            Parameters for the project.
+        phab_id : int
+            Id for the project's Phabricator project.
+        phab_name : str
+            Name of the project's Phabricator project.
         """
         name = parameters[self._project_columns["swedish_name"]]
         page = Page(self._site, name, self._config["project_namespace"])
@@ -65,52 +124,24 @@ class Wiki:
             logging.warning(
                 "Project page '{}' already exists. It will not be created.".format(page.title())  # noqa: E501
             )
-        else:
-            template = Template(self._config["project_template"], True)
-            project_parameters = self._config["project_parameters"].items()
-            for template_parameter, label in project_parameters:
-                template.add_parameter(
-                    template_parameter,
-                    parameters[self._project_columns[label]]
-                )
-            template.add_parameter("year", self._year)
-            template.add_parameter("phabricatorId", phab_id)
-            template.add_parameter("phabricatorName", phab_name)
-            template.add_parameter("bot", "ja")
-            content = "{}".format(template)
-            page.text = content
-            logging.info("Writing to project page '{}'".format(page.title()))
-            logging.debug(page.text)
-            self._write_page(page)
-            for subpage in self._config["subpages"]:
-                subpage_parameters = {
-                    "år": self._year  # always pass the year parameter
-                }
-                if "parameters" in subpage:
-                    for key, label in subpage["parameters"].items():
-                        subpage_parameters[key] = parameters[
-                            self._project_columns[label]]
-                if "add_goals_parameters" in subpage:
-                    # Special case for goals parameters, as they are not
-                    # just copied.
-                    template_key = \
-                        list(subpage["add_goals_parameters"].keys())[0]
-                    template_value = self._make_year_title(
-                        subpage["add_goals_parameters"][template_key]
-                    )
-                    subpage_parameters[template_key] = \
-                        Template(template_value, parameters=goals)
-                    subpage_parameters["måluppfyllnad"] = \
-                        self._create_goal_fulfillment_text(
-                            goals.keys(),
-                            goal_fulfillments
-                        )  # noqa:E123
-                self._add_subpage(
-                    name,
-                    subpage["title"],
-                    subpage["template_name"],
-                    subpage_parameters
-                )
+            return
+
+        template = Template(self._config["project_template"], True)
+        project_parameters = self._config["project_parameters"].items()
+        for template_parameter, label in project_parameters:
+            template.add_parameter(
+                template_parameter,
+                parameters[self._project_columns[label]]
+            )
+        template.add_parameter("year", self._year)
+        template.add_parameter("phabricatorId", phab_id)
+        template.add_parameter("phabricatorName", phab_name)
+        template.add_parameter("bot", "ja")
+        content = "{}".format(template)
+        page.text = content
+        logging.info("Writing to project page '{}'".format(page.title()))
+        logging.debug(page.text)
+        self._write_page(page)
 
     def _write_page(self, page):
         """Write a page unless this is a dry run.
@@ -127,33 +158,57 @@ class Wiki:
 
     def _add_subpage(
             self,
-            project,
-            title,
-            template_name,
-            template_parameters=None
+            subpage,
+            project_parameters,
+            project_name,
     ):
         """Add a subpage under the project page.
 
         Parameters
         ----------
-        project : str
-            The project name in Swedish.
-        title : str
-            The title of the subpage. Only the prefix, i.e. the
-            substring after the last slash. This will be prepended by
-            the project name to create the complete subpage title.
-        template_name : str
-            The name of the template to substitute to create the subpage.
-        template_parameters : dict
-            The parameters to pass to the template.
-
+        subpage : dict
+            Parameters for the page.
+        project_parameters : dict
+            Parameters for the project.
+        project_name : str
         """
 
-        full_title = "{}/{}".format(project, title)
+        # Always pass the year parameter.
+        template_parameters = {"år": self._year}
+        if "parameters" in subpage:
+            for key, label in subpage["parameters"].items():
+                template_parameters[key] = project_parameters[
+                    self._project_columns[label]
+                ]
+        if "add_goals_parameters" in subpage:
+            # Special case for goals parameters, as they are not
+            # just copied.
+            if not self._goals:
+                title = subpage["title"]
+                logging.warning(
+                    f"Goals need to be supplied for page '{title}', "
+                    "it will not be added."
+                )
+                return
+
+            template_key = \
+                list(subpage["add_goals_parameters"].keys())[0]
+            template_value = self._make_year_title(
+                subpage["add_goals_parameters"][template_key]
+            )
+            english_name = project_parameters[
+                self._project_columns["english_name"]
+            ]
+            project_goals = self._goals[english_name]
+            template_parameters[template_key] = \
+                Template(template_value, parameters=project_goals)
+            template_parameters["måluppfyllnad"] = \
+                self._create_goal_fulfillment_text(project_goals)
+        full_title = "{}/{}".format(project_name, subpage["title"])
         self._add_page_from_template(
             self._config["project_namespace"],
             full_title,
-            template_name,
+            subpage["template_name"],
             template_parameters
         )
 
@@ -197,15 +252,13 @@ class Wiki:
             logging.debug(page.text)
             self._write_page(page)
 
-    def _create_goal_fulfillment_text(self, goals, fulfillments):
+    def _create_goal_fulfillment_text(self, goals):
         """Create a string with the fulfillment texts for a set of goals.
 
         Parameters
         ----------
-        goals : list
-            Goal names for which to add fulfillments.
-        fulfillments : dict
-            Map of goal names and fulfillment texts.
+        goals : dict
+            Goals to add fulfillments for.
 
         Returns
         -------
@@ -215,8 +268,10 @@ class Wiki:
         """
 
         fulfillment_text = ""
-        for goal in goals:
-            fulfillment_text += "\n* {}".format(fulfillments[goal])
+        for goal_name in goals.keys():
+            fulfillment_text += "\n* {}".format(
+                self._goal_fulfillments[goal_name]
+            )
         return fulfillment_text
 
     def add_project_categories(self, project, area):
@@ -275,20 +330,29 @@ class Wiki:
 
         """
 
-        simple_pages = self._config["year_pages"]["simple"]
+        year_pages = self._config["year_pages"]
+        simple_pages = year_pages["simple"]
         for raw_title, template_name in simple_pages.items():
             title = self._make_year_title(raw_title)
+            if not self._prompt_add_page(title):
+                continue
+
             self._add_page_from_template(
                 None,
                 title,
                 template_name,
                 [self._year]
             )
-        self._add_projects_year_page()
-        self._add_program_overview_year_page()
-        self._add_year_categories()
-        self._create_current_projects_template()
-        self._add_volunteer_tasks_page()
+        if self._prompt_add_page(year_pages["projects"]["title"]):
+            self._add_projects_year_page()
+        if self._prompt_add_page(year_pages["program_overview"]["title"]):
+            self._add_program_overview_year_page()
+        if self._prompt_add_page("categories"):
+            self._add_year_categories()
+        if self._prompt_add_page(year_pages["current_projects_template"]):
+            self._create_current_projects_template()
+        if self._prompt_add_page(year_pages["volunteer_tasks"]["title"]):
+            self._add_volunteer_tasks_page()
 
     def _make_year_title(self, raw_string):
         """Replace the placeholder "<YEAR>" with the actual year.
@@ -308,6 +372,26 @@ class Wiki:
         title = raw_string.replace("<YEAR>", str(self._year))
         return title
 
+    def _prompt_add_page(self, title):
+        """Prompt user for writing a page.
+
+        Parameters
+        ----------
+        title : str
+            Title of the page.
+
+        Returns
+        -------
+        bool
+            True if the prompt add pages command line is set or if
+            the user answers "y", else False.
+        """
+        if not self._prompt_add_pages:
+            return True
+
+        prompt = 'Add page "{}"? (y/N)'.format(self._make_year_title(title))
+        return input(prompt).lower() == "y"
+
     def _add_projects_year_page(self):
         """Create a page with a list of the year's projects.
 
@@ -316,8 +400,14 @@ class Wiki:
         """
 
         config = self._config["year_pages"]["projects"]
+        title = self._make_year_title(config["title"])
         content = ""
-        for program in self._programs:
+        try:
+            programs = self._get_programs()
+        except PageMissingError as error:
+            logging.error(f"Error when processing '{title}'.")
+            raise error
+        for program in programs:
             content += "== {} {} ==\n".format(
                 program["number"],
                 program["name"]
@@ -329,7 +419,6 @@ class Wiki:
                 )
                 for project in strategy["projects"]:
                     content += self._make_project_data_string(project)
-        title = self._make_year_title(config["title"])
         self._add_page_from_template(
             None,
             title,
@@ -408,22 +497,30 @@ class Wiki:
             "en": english_name
         }
 
-    def parse_programs(self):
-        """Parse table with descriptions for program, strategies and names.
+    def _get_programs(self):
+        """Get descriptions for program, strategies and names.
 
-        Assumes a wikipage with a table formatted in a particular way,
-        with cells spanning mutiple rows and HTML comments containing
-        some of the information. An instance of such a table can be
-        found on:
+        Parses a table from the wiki or just return the result if it
+        has been parsed already. Assumes a wikipage with a table
+        formatted in a particular way, with cells spanning multiple
+        rows and HTML comments containing some of the information. An
+        instance of such a table can be found on:
         https://se.wikimedia.org/w/index.php?title=Verksamhetsplan_2019/Tabell_%C3%B6ver_program,_strategi_och_m%C3%A5l&oldid=75471.
 
         """
+
+        if self._programs is not None:
+            return self._programs
 
         operational_plan_page = Page(
             self._site,
             self._make_year_title(
                 self._config["year_pages"]["operational_plan"])
         )
+        if not operational_plan_page.exists():
+            title = operational_plan_page.title()
+            raise PageMissingError(title)
+
         # Get table string. This assumes that it is the first table on
         # the page.
         table_string = str(mwp.parse(
@@ -436,6 +533,7 @@ class Wiki:
             table_string,
             flags=re.S
         )
+        self._programs = []
         remaining_projects = list(self._projects.keys())
         # Split table on rows.
         rows = table_string.split("|-")
@@ -491,6 +589,7 @@ class Wiki:
                     ', '.join(remaining_projects)
                 )
             )
+        return self._programs
 
     def _add_program_overview_year_page(self):
         """Add a page with program overview.
@@ -502,9 +601,17 @@ class Wiki:
         """
 
         config = self._config["year_pages"]["program_overview"]
+        title = self._make_year_title(
+            self._config["year_pages"]["program_overview"]["title"]
+        )
         templates = config["templates"]
         content_parameter = ""
-        for p, program in enumerate(self._programs):
+        try:
+            programs = self._get_programs()
+        except PageMissingError as error:
+            logging.error(f"Error when processing '{title}'.")
+            raise error
+        for p, program in enumerate(programs):
             content_parameter += Template(
                 templates["program"],
                 True,
@@ -535,9 +642,6 @@ class Wiki:
                         [project]
                     ).multiline_string()
                     content_parameter += "\n"
-        title = self._make_year_title(
-            self._config["year_pages"]["program_overview"]["title"]
-        )
         self._add_page_from_template(
             None,
             title,
@@ -586,7 +690,12 @@ class Wiki:
             ns=self._config["project_namespace"])
         delimiter = "''' · '''"
         template_data = {}
-        for program in self._programs:
+        try:
+            programs = self._get_programs()
+        except PageMissingError as error:
+            logging.error(f"Error when processing '{page_name}'.")
+            raise error
+        for program in programs():
             projects = set()
             for strategy in program.get('strategies'):
                 # projects sorted by id to get thematic grouping
@@ -613,8 +722,15 @@ class Wiki:
 
         Creates a list of volunteer pages sorted by program.
         """
+        config = self._config["year_pages"]["volunteer_tasks"]
+        title = self._make_year_title(config["title"])
         project_list_string = ""
-        for program in self._programs:
+        try:
+            programs = self._get_programs()
+        except PageMissingError as error:
+            logging.error(f"Error when processing '{title}'.")
+            raise error
+        for program in programs:
             project_list_string += "== {} ==\n".format(program["name"])
             for strategy in program["strategies"]:
                 for number in strategy["projects"]:
@@ -625,8 +741,6 @@ class Wiki:
             comment = Template("Utkommenterat", True, ["Platshållare"])
             project_list_string += "{}&nbsp;\n\n".format(comment)
 
-        config = self._config["year_pages"]["volunteer_tasks"]
-        title = self._make_year_title(config["title"])
         parameters = {
             "frivilliguppdrag": project_list_string,
             "år": self._year
@@ -696,8 +810,10 @@ class Wiki:
                 number
             )
 
-        self._write_page(name_template)
-        self._write_page(number_template)
+        if self._prompt_add_page(name_template.title()):
+            self._write_page(name_template)
+        if self._prompt_add_page(number_template.title()):
+            self._write_page(number_template)
 
     def _insert_row_before_default(self, template, row, number):
         """Add a row to the template just above the default row.
@@ -731,3 +847,10 @@ class Wiki:
             fr"{row}\n\1",
             template.text
         )
+
+class PageMissingError(Exception):
+    def __init__(self, missing_page):
+        message = (f"Page '{missing_page}' doesn't exist and is "
+                   "required to create this page.")
+        super().__init__(message)
+
