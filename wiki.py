@@ -848,9 +848,9 @@ class Wiki:
             template.text
         )
 
+
 class PageMissingError(Exception):
     def __init__(self, missing_page):
         message = (f"Page '{missing_page}' doesn't exist and is "
                    "required to create this page.")
         super().__init__(message)
-
